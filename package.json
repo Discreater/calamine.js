@@ -1,0 +1,44 @@
+{
+  "name": "calamine.js",
+  "version": "0.1.0",
+  "description": "JS binding of calamine",
+  "packageManager": "pnpm@10.22.0",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "native/Cargo.toml",
+    "native/build.rs",
+    "native/src"
+  ],
+  "scripts": {
+    "build:native": "cargo check --manifest-path ./native/Cargo.toml",
+    "build:ts": "tsc -p ./tsconfig.json",
+    "build": "pnpm run build:native && pnpm run build:ts",
+    "test:native": "cargo test --manifest-path ./native/Cargo.toml",
+    "test:js": "node --test ./test/*.test.js",
+    "test": "pnpm run build && pnpm run test:native && pnpm run test:js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Discreater/calamine.js.git"
+  },
+  "keywords": [
+    "excel",
+    "rust",
+    "nodejs",
+    "typescript",
+    "calamine"
+  ],
+  "author": "",
+  "license": "MIT",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Discreater/calamine.js/issues"
+  },
+  "homepage": "https://github.com/Discreater/calamine.js#readme",
+  "devDependencies": {
+    "@types/node": "^25.9.1",
+    "typescript": "^6.0.3"
+  }
+}
