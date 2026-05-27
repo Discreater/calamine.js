@@ -1,65 +1,102 @@
-use napi::bindgen_prelude::{Buffer, Error, Result};
+use std::{io::Cursor, path::Path};
+
+use calamine::{open_workbook_auto, open_workbook_auto_from_rs, Reader, Sheets};
+use napi::bindgen_prelude::{Buffer, Error as NapiError, Result};
 use napi_derive::napi;
 
-const NOT_IMPLEMENTED_MESSAGE: &str =
-    "calamine.js native workbook opening is not implemented yet; see the roadmap milestone for PR 3.";
-
 #[napi(object)]
-pub struct NativeBootstrapStatus {
-    pub stage: String,
-    pub supported_formats: Vec<String>,
-    pub package_version: String,
+pub struct NativeWorkbookSummary {
+    pub format: String,
+    pub sheet_names: Vec<String>,
 }
 
 #[napi]
-pub fn bootstrap_status() -> NativeBootstrapStatus {
-    NativeBootstrapStatus {
-        stage: "bootstrap".to_owned(),
-        supported_formats: vec![
-            "xlsx".to_owned(),
-            "xls".to_owned(),
-            "xlsb".to_owned(),
-            "ods".to_owned(),
-        ],
-        package_version: env!("CARGO_PKG_VERSION").to_owned(),
+pub fn open_workbook_from_file(path: String) -> Result<NativeWorkbookSummary> {
+    if path.is_empty() {
+        return Err(NapiError::from_reason(
+            "openWorkbookFromFile expects a non-empty file path.",
+        ));
+    }
+
+    let workbook =
+        open_workbook_auto(&path).map_err(|error| NapiError::from_reason(error.to_string()))?;
+
+    Ok(workbook_summary(
+        &workbook,
+        format_from_path(&path).unwrap_or_else(|| workbook_format(&workbook).to_owned()),
+    ))
+}
+
+#[napi]
+pub fn open_workbook_from_buffer(data: Buffer) -> Result<NativeWorkbookSummary> {
+    if data.is_empty() {
+        return Err(NapiError::from_reason(
+            "openWorkbookFromBuffer expects a non-empty Buffer or Uint8Array.",
+        ));
+    }
+
+    let workbook = open_workbook_auto_from_rs(Cursor::new(data.to_vec()))
+        .map_err(|error| NapiError::from_reason(error.to_string()))?;
+
+    Ok(workbook_summary(&workbook, workbook_format(&workbook).to_owned()))
+}
+
+fn workbook_summary<RS>(workbook: &Sheets<RS>, format: String) -> NativeWorkbookSummary
+where
+    RS: std::io::Read + std::io::Seek,
+{
+    NativeWorkbookSummary {
+        format,
+        sheet_names: workbook.sheet_names(),
     }
 }
 
-#[napi]
-pub fn open_workbook_from_file(_path: String) -> Result<()> {
-    Err(not_implemented())
+fn workbook_format<RS>(workbook: &Sheets<RS>) -> &'static str {
+    match workbook {
+        Sheets::Xls(_) => "xls",
+        Sheets::Xlsx(_) => "xlsx",
+        Sheets::Xlsb(_) => "xlsb",
+        Sheets::Ods(_) => "ods",
+    }
 }
 
-#[napi]
-pub fn open_workbook_from_buffer(_data: Buffer) -> Result<()> {
-    Err(not_implemented())
-}
-
-fn not_implemented() -> Error {
-    Error::from_reason(NOT_IMPLEMENTED_MESSAGE)
+fn format_from_path(path: &str) -> Option<String> {
+    Path::new(path)
+        .extension()
+        .and_then(|extension| extension.to_str())
+        .map(|extension| extension.to_ascii_lowercase())
 }
 
 #[cfg(test)]
 mod tests {
+    use std::path::PathBuf;
+
     use super::*;
 
-    #[test]
-    fn bootstrap_status_lists_supported_formats() {
-        let status = bootstrap_status();
-
-        assert_eq!(status.stage, "bootstrap");
-        assert_eq!(status.package_version, env!("CARGO_PKG_VERSION"));
-        assert!(status.supported_formats.iter().any(|format| format == "xlsx"));
-        assert!(status.supported_formats.iter().any(|format| format == "xls"));
-        assert!(status.supported_formats.iter().any(|format| format == "xlsb"));
-        assert!(status.supported_formats.iter().any(|format| format == "ods"));
+    fn fixture_path(name: &str) -> String {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("..")
+            .join("fixtures")
+            .join(name)
+            .display()
+            .to_string()
     }
 
     #[test]
-    fn placeholder_exports_remain_unimplemented() {
-        let error = open_workbook_from_file("fixtures/example.xlsx".to_owned())
-            .expect_err("placeholder should return an error");
+    fn opens_workbook_from_file_and_reads_metadata() {
+        let summary =
+            open_workbook_from_file(fixture_path("workbook.xlsx")).expect("expected fixture to open");
 
-        assert!(error.to_string().contains("not implemented yet"));
+        assert_eq!(summary.format, "xlsx");
+        assert_eq!(summary.sheet_names, vec!["Overview", "Data"]);
+    }
+
+    #[test]
+    fn opens_workbook_from_buffer_and_reads_metadata() {
+        let bytes = std::fs::read(fixture_path("workbook.xlsx")).expect("expected fixture bytes");
+        let summary = open_workbook_from_buffer(Buffer::from(bytes)).expect("expected fixture to open");
+
+        assert_eq!(summary.format, "xlsx");
+        assert_eq!(summary.sheet_names, vec!["Overview", "Data"]);
     }
 }
