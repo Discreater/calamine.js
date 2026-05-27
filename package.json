@@ -2,6 +2,7 @@
   "name": "calamine.js",
   "version": "0.1.0",
   "description": "JS binding of calamine",
+  "packageManager": "pnpm@10.22.0",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": [
@@ -13,10 +14,10 @@
   "scripts": {
     "build:native": "cargo check --manifest-path ./native/Cargo.toml",
     "build:ts": "tsc -p ./tsconfig.json",
-    "build": "npm run build:native && npm run build:ts",
+    "build": "pnpm run build:native && pnpm run build:ts",
     "test:native": "cargo test --manifest-path ./native/Cargo.toml",
     "test:js": "node --test ./test/*.test.js",
-    "test": "npm run build && npm run test:native && npm run test:js"
+    "test": "pnpm run build && pnpm run test:native && pnpm run test:js"
   },
   "repository": {
     "type": "git",
