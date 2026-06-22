@@ -1,12 +1,24 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const path = require("node:path");
+const fs = require("node:fs");
 
 const {
-  CalamineNotImplementedError,
+  CalamineError,
   openWorkbook,
   openWorkbookFromBuffer,
   openWorkbookFromFile,
 } = require("../dist/index.js");
+
+const fixturePath = path.join(__dirname, "..", "fixtures", "workbook.xlsx");
+
+function assertWorkbookSummary(workbook) {
+  assert.deepEqual(workbook.sheetNames(), ["Overview", "Data"]);
+  assert.deepEqual(workbook.getMetadata(), {
+    format: "xlsx",
+    sheetCount: 2,
+  });
+}
 
 test("exports the planned entry points", () => {
   assert.equal(typeof openWorkbook, "function");
@@ -14,20 +26,25 @@ test("exports the planned entry points", () => {
   assert.equal(typeof openWorkbookFromBuffer, "function");
 });
 
-test("openWorkbookFromFile uses a placeholder implementation", async () => {
-  await assert.rejects(
-    () => openWorkbookFromFile("/tmp/workspace/Discreater/calamine.js/fixtures/example.xlsx"),
-    CalamineNotImplementedError,
-  );
+test("openWorkbookFromFile opens workbook metadata and sheet names", async () => {
+  const workbook = await openWorkbookFromFile(fixturePath);
+  assertWorkbookSummary(workbook);
 });
 
-test("openWorkbookFromBuffer validates the input", async () => {
-  await assert.rejects(
-    () => openWorkbookFromBuffer(Buffer.alloc(0)),
-    /non-empty Buffer or Uint8Array/,
-  );
+test("openWorkbookFromBuffer opens workbook metadata and sheet names", async () => {
+  const workbook = await openWorkbookFromBuffer(fs.readFileSync(fixturePath));
+  assertWorkbookSummary(workbook);
 });
 
 test("openWorkbook dispatches Buffer input to the buffer entry point", async () => {
-  await assert.rejects(() => openWorkbook(Buffer.from([0x50, 0x4b])), CalamineNotImplementedError);
+  const workbook = await openWorkbook(fs.readFileSync(fixturePath));
+  assertWorkbookSummary(workbook);
+});
+
+test("closed workbooks reject further metadata access", async () => {
+  const workbook = await openWorkbookFromFile(fixturePath);
+  workbook.close();
+
+  assert.throws(() => workbook.sheetNames(), CalamineError);
+  assert.throws(() => workbook.getMetadata(), CalamineError);
 });

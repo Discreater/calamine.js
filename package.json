@@ -12,7 +12,7 @@
     "native/src"
   ],
   "scripts": {
-    "build:native": "cargo check --manifest-path ./native/Cargo.toml",
+    "build:native": "cargo build --manifest-path ./native/Cargo.toml && node -e \"const fs=require('node:fs');const path=require('node:path');const platform=process.platform;const sourceName=platform==='win32'?'calamine_js_native.dll':platform==='darwin'?'libcalamine_js_native.dylib':'libcalamine_js_native.so';const source=path.join(process.cwd(),'native','target','debug',sourceName);const distDir=path.join(process.cwd(),'dist');fs.mkdirSync(distDir,{recursive:true});fs.copyFileSync(source,path.join(distDir,'calamine_js_native.node'));\"",
     "build:ts": "tsc -p ./tsconfig.json",
     "build": "pnpm run build:native && pnpm run build:ts",
     "test:native": "cargo test --manifest-path ./native/Cargo.toml",

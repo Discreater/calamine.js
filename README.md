@@ -9,10 +9,9 @@ This repository now includes the bootstrap for the native Node.js package:
 
 - pnpm package metadata and TypeScript build output
 - a Rust crate for the future native binding
-- placeholder TypeScript exports for the planned public API
-- placeholder native Rust exports for the upcoming calamine integration
-
-Workbook parsing is not implemented yet. That work starts in the next milestone.
+- native workbook opening from file path and in-memory buffers
+- workbook metadata and sheet-name listing through the TypeScript Workbook API
+- Rust calamine-backed native exports wired into the built package
 
 ## Development
 
